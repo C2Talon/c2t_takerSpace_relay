@@ -76,7 +76,7 @@ buffer c2t_takerSpace_relay_itemAmount(buffer page) {
 	foreach i,x in c2t_takerSpace_relay_order() {
 		mat = create_matcher(`(<div style="margin-right: 1em">\\s*{x.name})(<br)`,out);
 		if (mat.find())
-			out.replace_string(mat.group(0),`{mat.group(1)} <span style="color:#00f">(have:&nbsp;{item_amount(x)})</span>{mat.group(2)}`);
+			out.replace_string(mat.group(0),`{mat.group(1)} <span style="color:#00f">(have:&nbsp;{available_amount(x)})</span>{mat.group(2)}`);
 	}
 	return out;
 }
