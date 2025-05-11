@@ -11,8 +11,17 @@ string c2t_takerSpace_relay_button(item ite);
 //returns modified page with display of item amounts of each item added
 buffer c2t_takerSpace_relay_itemAmount(buffer page);
 
+//returns modified page with buttons disabled of items player cannot afford
+buffer c2t_takerSpace_relay_disableUnaffordable(buffer page);
+
 //returns map of cost of each item
 int[item,int] c2t_takerSpace_relay_cost();
+
+//returns map of current amount of supplies
+int[int] c2t_takerSpace_relay_currency();
+
+//returns whether can afford the thing of cost with currency
+boolean c2t_takerSpace_relay_canAfford(int[int] currency,int[int] cost);
 
 //keys for item cost
 string[int] c2t_takerSpace_relay_key();
@@ -35,6 +44,7 @@ string c2t_takerSpace_relay(string page) {
 		out.replace_string(replace,mod+replace);
 	}
 	out = out.c2t_takerSpace_relay_itemAmount();
+	out = out.c2t_takerSpace_relay_disableUnaffordable();
 	return out;
 }
 string c2t_takerSpace_relay_button(item ite) {
@@ -70,6 +80,19 @@ buffer c2t_takerSpace_relay_itemAmount(buffer page) {
 	}
 	return out;
 }
+buffer c2t_takerSpace_relay_disableUnaffordable(buffer page) {
+	int[int] currency = c2t_takerSpace_relay_currency();
+	int[item,int] cost = c2t_takerSpace_relay_cost();
+	matcher mat;
+	foreach i,x in c2t_takerSpace_relay_order() {
+		if (!c2t_takerSpace_relay_canAfford(currency,cost[x])) {
+			mat = create_matcher(`(<button class="button" type="submit" style="display: flex")(>\\s*<div style="margin-right: 1em">\\s*)({x.name} <span[^>]*>[^<]*</span>[^<]*<br[^>]*>[^<]*)(</div>\\s*<img[^>]+)>`,page);
+			if (mat.find())
+				page.replace_string(mat.group(0),`{mat.group(1)}{mat.group(2)}<span style="opacity:0.5;">{mat.group(3)}</span>{mat.group(4)} style="opacity:0.5;" />`);
+		}
+	}
+	return page;
+}
 int[item,int] c2t_takerSpace_relay_cost() {
 	return int[item,int]{
 		$item[deft pirate hook]:		{0,0,1,1,0,1},
@@ -91,6 +114,22 @@ int[item,int] c2t_takerSpace_relay_cost() {
 		$item[silky pirate drawers]:		{0,0,0,0,2,0},
 		$item[spices]:				{1,0,0,0,0,0},
 	};
+}
+int[int] c2t_takerSpace_relay_currency() {
+	return int[int]{
+		get_property("takerSpaceSpice").to_int(),
+		get_property("takerSpaceRum").to_int(),
+		get_property("takerSpaceAnchor").to_int(),
+		get_property("takerSpaceMast").to_int(),
+		get_property("takerSpaceSilk").to_int(),
+		get_property("takerSpaceGold").to_int(),
+	};
+}
+boolean c2t_takerSpace_relay_canAfford(int[int] currency,int[int] cost) {
+	foreach i,x in currency
+		if (x < cost[i])
+			return false;
+	return true;
 }
 string[int] c2t_takerSpace_relay_key() {
 	return string[int]{
