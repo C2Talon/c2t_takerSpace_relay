@@ -8,6 +8,9 @@ string c2t_takerSpace_relay(string page);
 //returns html of a button for the item
 string c2t_takerSpace_relay_button(item ite);
 
+//returns modified page with display of item amounts of each item added
+buffer c2t_takerSpace_relay_itemAmount(buffer page);
+
 //returns map of cost of each item
 int[item,int] c2t_takerSpace_relay_cost();
 
@@ -24,13 +27,14 @@ string c2t_takerSpace_relay(string page) {
 	buffer out = page;
 	string mod;
 	foreach i,x in c2t_takerSpace_relay_order()
-		if (!create_matcher(`<div style="margin-right: 1em">\\s*{x.name}<br>`,page).find())
+		if (!create_matcher(`<div style="margin-right: 1em">\\s*{x.name}<br`,page).find())
 			mod += c2t_takerSpace_relay_button(x);
 	if (mod != "") {
 		mod = '<hr /><b>TakerSpace Formulas Unhidden:</b><br />' + mod;
 		string replace = '<p><a href="campground.php">Back to Campground</a>';
 		out.replace_string(replace,mod+replace);
 	}
+	out = out.c2t_takerSpace_relay_itemAmount();
 	return out;
 }
 string c2t_takerSpace_relay_button(item ite) {
@@ -54,6 +58,16 @@ string c2t_takerSpace_relay_button(item ite) {
 	out.append(`<img src="/images/itemimages/magnify.gif" align="absmiddle" onclick="descitem('{ite.descid}')" height="30" width="30" />`);
 	out.append("</div></form>");
 
+	return out;
+}
+buffer c2t_takerSpace_relay_itemAmount(buffer page) {
+	buffer out = page;
+	matcher mat;
+	foreach i,x in c2t_takerSpace_relay_order() {
+		mat = create_matcher(`(<div style="margin-right: 1em">\\s*{x.name})(<br)`,out);
+		if (mat.find())
+			out.replace_string(mat.group(0),`{mat.group(1)} <span style="color:#00f">(have:&nbsp;{item_amount(x)})</span>{mat.group(2)}`);
+	}
 	return out;
 }
 int[item,int] c2t_takerSpace_relay_cost() {
