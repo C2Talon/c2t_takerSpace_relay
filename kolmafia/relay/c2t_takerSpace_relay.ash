@@ -5,16 +5,13 @@
 //returns modified page for the relay browser
 string c2t_takerSpace_relay(string page);
 
-//returns html of a button for the item
-string c2t_takerSpace_relay_button(item ite);
+//adds all the improved buttons to the page
+buffer c2t_takerSpace_relay_improvedButtons(buffer page);
 
-//returns modified page with display of item amounts of each item added
-buffer c2t_takerSpace_relay_itemAmount(buffer page);
+//purges page of recipes known by the script; unknown ones will end up at the top of the list
+buffer c2t_takerSpace_relay_purgeKnown(buffer page);
 
-//returns modified page with buttons disabled of items player cannot afford
-buffer c2t_takerSpace_relay_disableUnaffordable(buffer page);
-
-//returns modified page to keep current supplies in place at top of page
+//makes the current supplies section stay at the top of the page even when scrolling down
 buffer c2t_takerSpace_relay_stickySupplies(buffer page);
 
 //returns map of cost of each item
@@ -37,70 +34,66 @@ item[int] c2t_takerSpace_relay_order();
 
 string c2t_takerSpace_relay(string page) {
 	buffer out = page;
-	string mod;
-	foreach i,x in c2t_takerSpace_relay_order()
-		if (!create_matcher(`<div style="margin-right: 1em">\\s*{x.name}<br`,page).find())
-			mod += c2t_takerSpace_relay_button(x);
-	if (mod != "") {
-		mod = '<hr /><b>TakerSpace Formulas Unhidden:</b><br />' + mod;
-		string replace = '<p><a href="campground.php">Back to Campground</a>';
-		out.replace_string(replace,mod+replace);
-	}
-	out = out.c2t_takerSpace_relay_stickySupplies();
-	out = out.c2t_takerSpace_relay_itemAmount();
-	out = out.c2t_takerSpace_relay_disableUnaffordable();
+	out.c2t_takerSpace_relay_stickySupplies();
+	out.c2t_takerSpace_relay_improvedButtons();
 	return out;
 }
-string c2t_takerSpace_relay_button(item ite) {
-	buffer out;
-	int[int] cost = c2t_takerSpace_relay_cost()[ite];
-	string[int] key = c2t_takerSpace_relay_key();
-
-	out.append('<form method="post" action="choice.php">');
-	out.append(`<input type="hidden" name="pwd" value="{my_hash()}" />`);
-	out.append('<input type="hidden" name="option" value="1" />');
-	out.append('<input type="hidden" name="whichchoice" value="1537" />');
-	foreach i,x in key
-		out.append(`<input type="hidden" name="{x}" value="{cost[i]}" />`);
-	out.append('<div style="display: flex"><button class="button" type="submit" style="display: flex"><div style="margin-right: 1em">');
-	out.append(`{ite.name}<br />`);
-	foreach i,x in key
-		out.append((i == 0 ? "" : ", ") + `{cost[i]} {x}`);
-	out.append("</div>");
-	out.append(`<img src="/images/itemimages/{ite.image}" align="absmiddle" />`);
-	out.append("</button>");
-	out.append(`<img src="/images/itemimages/magnify.gif" align="absmiddle" onclick="descitem('{ite.descid}')" height="30" width="30" />`);
-	out.append("</div></form>");
-
-	return out;
-}
-buffer c2t_takerSpace_relay_itemAmount(buffer page) {
-	buffer out = page;
-	matcher mat;
-	foreach i,x in c2t_takerSpace_relay_order() {
-		mat = create_matcher(`(<div style="margin-right: 1em">\\s*{x.name})(<br)`,out);
-		if (mat.find())
-			out.replace_string(mat.group(0),`{mat.group(1)} <span style="color:#00f">(have:&nbsp;{available_amount(x)})</span>{mat.group(2)}`);
-	}
-	return out;
-}
-buffer c2t_takerSpace_relay_disableUnaffordable(buffer page) {
-	int[int] currency = c2t_takerSpace_relay_currency();
+buffer c2t_takerSpace_relay_improvedButtons(buffer page) {
 	int[item,int] cost = c2t_takerSpace_relay_cost();
-	matcher mat;
-	foreach i,x in c2t_takerSpace_relay_order() {
-		if (!c2t_takerSpace_relay_canAfford(currency,cost[x])) {
-			mat = create_matcher(`(<button class="button" type="submit" style="display: flex")(>\\s*<div style="margin-right: 1em">\\s*)({x.name} <span[^>]*>[^<]*</span>[^<]*<br[^>]*>[^<]*)(</div>\\s*<img[^>]+)>`,page);
-			if (mat.find())
-				page.replace_string(mat.group(0),`{mat.group(1)}{mat.group(2)}<span style="opacity:0.5;">{mat.group(3)}</span>{mat.group(4)} style="opacity:0.5;" />`);
+	string[int] key = c2t_takerSpace_relay_key();
+	int[int] currency = c2t_takerSpace_relay_currency();
+	buffer mod;
+	boolean afford;
+
+	page.c2t_takerSpace_relay_purgeKnown();
+
+	foreach num,ite in c2t_takerSpace_relay_order() {
+		afford = c2t_takerSpace_relay_canAfford(currency,cost[ite]);
+
+		mod.append('<form method="post" action="choice.php">');
+		mod.append(`<input type="hidden" name="pwd" value="{my_hash()}" />`);
+		mod.append('<input type="hidden" name="option" value="1" />');
+		mod.append('<input type="hidden" name="whichchoice" value="1537" />');
+		foreach i,x in key
+			mod.append(`<input type="hidden" name="{x}" value="{cost[ite,i]}" />`);
+		mod.append('<div style="display: flex"><button class="button" type="submit" style="display: flex"><div style="margin-right: 1em">');
+		if (!afford)
+			mod.append('<span style="opacity:0.5;">');
+		mod.append(`{ite.name} <span style="color:#00f">(have:&nbsp;{available_amount(ite)})</span><br />`);
+		foreach i,x in key
+			mod.append((i == 0 ? "" : ", ") + `{cost[ite,i]} {x}`);
+		if (!afford)
+			mod.append('</span>');
+		mod.append("</div>");
+		mod.append(`<img src="/images/itemimages/{ite.image}" align="absmiddle" `);
+		if (!afford)
+			mod.append('style="opacity:0.5;" ');
+		mod.append("/></button>");
+		mod.append(`<img src="/images/itemimages/magnify.gif" align="absmiddle" onclick="descitem('{ite.descid}')" height="30" width="30" />`);
+		mod.append("</div></form>");
+	}
+	string replace = '<p><a href="campground.php">Back to Campground</a>';
+	page.replace_string(replace,mod+replace);
+
+	return page;
+}
+buffer c2t_takerSpace_relay_purgeKnown(buffer page) {
+	matcher mat = create_matcher(`<form\.+?</form>`,page);
+	mat.find();//skip first form
+
+	if (mat.find()) foreach i,x in c2t_takerSpace_relay_order() {
+		if (create_matcher(`<div style="margin-right: 1em">\\s*{x.name}<br`,mat.group(0)).find()) {
+			page.replace_string(mat.group(0),"");
+			if (!mat.find())
+				break;
 		}
 	}
 	return page;
 }
 buffer c2t_takerSpace_relay_stickySupplies(buffer page) {
-	matcher mat = create_matcher(`(<b>Current Supplies:</b>[^\\n]+)<br>\\n`,page);
+	matcher mat = create_matcher(`(<b>Current Supplies:</b>[^\\n]+)<br>`,page);
 	if (mat.find())
-		page = page.replace_string(mat.group(0),`<div style="background-color:#fff;position:sticky;top:0;z-index:10;">{mat.group(1)}<hr /></div>`);
+		page.replace_string(mat.group(0),`<div style="background-color:#fff;position:sticky;top:0;z-index:10;">{mat.group(1)}<hr /></div>`);
 	return page;
 }
 int[item,int] c2t_takerSpace_relay_cost() {
