@@ -14,6 +14,9 @@ buffer c2t_takerSpace_relay_itemAmount(buffer page);
 //returns modified page with buttons disabled of items player cannot afford
 buffer c2t_takerSpace_relay_disableUnaffordable(buffer page);
 
+//returns modified page to keep current supplies in place at top of page
+buffer c2t_takerSpace_relay_stickySupplies(buffer page);
+
 //returns map of cost of each item
 int[item,int] c2t_takerSpace_relay_cost();
 
@@ -43,6 +46,7 @@ string c2t_takerSpace_relay(string page) {
 		string replace = '<p><a href="campground.php">Back to Campground</a>';
 		out.replace_string(replace,mod+replace);
 	}
+	out = out.c2t_takerSpace_relay_stickySupplies();
 	out = out.c2t_takerSpace_relay_itemAmount();
 	out = out.c2t_takerSpace_relay_disableUnaffordable();
 	return out;
@@ -91,6 +95,12 @@ buffer c2t_takerSpace_relay_disableUnaffordable(buffer page) {
 				page.replace_string(mat.group(0),`{mat.group(1)}{mat.group(2)}<span style="opacity:0.5;">{mat.group(3)}</span>{mat.group(4)} style="opacity:0.5;" />`);
 		}
 	}
+	return page;
+}
+buffer c2t_takerSpace_relay_stickySupplies(buffer page) {
+	matcher mat = create_matcher(`(<b>Current Supplies:</b>[^\\n]+)<br>\\n`,page);
+	if (mat.find())
+		page = page.replace_string(mat.group(0),`<div style="background-color:#fff;position:sticky;top:0;z-index:10;">{mat.group(1)}<hr /></div>`);
 	return page;
 }
 int[item,int] c2t_takerSpace_relay_cost() {
