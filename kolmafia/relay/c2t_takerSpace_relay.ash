@@ -42,14 +42,14 @@ buffer c2t_takerSpace_relay_improvedButtons(buffer page) {
 	int[item,int] cost = c2t_takerSpace_relay_cost();
 	string[int] key = c2t_takerSpace_relay_key();
 	int[int] currency = c2t_takerSpace_relay_currency();
-	buffer mod;
+	buffer can,not;
 	boolean afford;
 
 	page.c2t_takerSpace_relay_purgeKnown();
 
 	foreach num,ite in c2t_takerSpace_relay_order() {
 		afford = c2t_takerSpace_relay_canAfford(currency,cost[ite]);
-
+		buffer mod;
 		mod.append('<form method="post" action="choice.php">');
 		mod.append(`<input type="hidden" name="pwd" value="{my_hash()}" />`);
 		mod.append('<input type="hidden" name="option" value="1" />');
@@ -71,9 +71,13 @@ buffer c2t_takerSpace_relay_improvedButtons(buffer page) {
 		mod.append("/></button>");
 		mod.append(`<img src="/images/itemimages/magnify.gif" align="absmiddle" onclick="descitem('{ite.descid}')" height="30" width="30" />`);
 		mod.append("</div></form>");
+		if (afford)
+			can.append(mod);
+		else
+			not.append(mod);
 	}
 	string replace = '<p><a href="campground.php">Back to Campground</a>';
-	page.replace_string(replace,mod+replace);
+	page.replace_string(replace,can+not+replace);
 
 	return page;
 }
